@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RTIS Analysis - SPM Tool (Final - Bold)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; padding: 0; background: #f5f7fb; color: #111827; }
+    .page { max-width: 1200px; margin: 18px auto 40px; padding: 16px; }
+    .card { background: #fff; border-radius: 12px; padding: 20px 22px; box-shadow: 0 4px 14px rgba(15,23,42,0.06); margin-bottom: 18px; }
+    h1 { font-size: 1.4rem; margin: 0 0 8px; text-align: center; font-weight:800; }
+    #mainHeading { font-weight: 900; text-decoration: underline; }
+    h2 { font-size: 1.05rem; margin: 0 0 10px; font-weight:800; }
+    .subtitle { font-size: 0.95rem; text-align: center; color: #555; margin-bottom: 18px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 12px 18px; margin-bottom: 12px; }
+    .field { display:flex; flex-direction:column; gap:4px; font-size:0.95rem; }
+    label { font-weight:800; }
+    input[type="date"], input[type="text"], input[type="number"], select, input[type="file"], textarea {
+      border-radius:6px; border:1px solid #cbd5e1; padding:8px 10px; font-size:0.95rem; background:#f8fafc;
+    }
+    textarea { min-height:100px; resize:vertical; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; margin-bottom:8px; margin-top:8px; }
+    button { border:none; border-radius:999px; padding:10px 18px; font-size:0.95rem; cursor:pointer; font-weight:800; display:inline-flex; align-items:center; gap:8px; }
+    #plotBtn { background: #111827; color:#fff; } #plotBtn:hover { background:#0b1220; }
+    #printBtn { background:#e2e8f0; color:#111827; } #printBtn:hover { background:#cbd5e1; }
+    #printIrregBtn { background:#b91c1c; color:#fff; } #printIrregBtn:hover { background:#991516; }
+    .chart-card { padding:18px; border-radius:12px; background:#fff; border:1px solid #e5e7eb; margin-top:10px; }
+    .chart-wrapper { position:relative; width:100%; height:420px; background: #ffffff !important; }
+    canvas { width:100%; height:100%; background: #ffffff !important; filter: none !important; -webkit-filter: none !important; mix-blend-mode: normal !important; }
+    .footer-note { margin-top:10px; font-size:0.92rem; color:#374151; font-weight:700; }
+    .stoppage-card { border-radius:10px; border:1px solid #e5e7eb; background:#fff; padding:12px; margin-bottom:12px; }
+    .stoppage-title { font-size:0.98rem; font-weight:900; margin-bottom:8px; }
+    .stoppage-chart-wrapper { position:relative; width:100%; height:320px; background:#fff !important; }
+    .stoppage-callouts { margin-top:10px; font-size:0.95rem; color:#374151; display:flex; gap:12px; flex-wrap:wrap; font-weight:700; }
+    .stoppage-callouts .label { font-weight:900; }
+    #perfSummaryTable, #summaryTable { width:100%; border-collapse:collapse; font-size:0.95rem; margin-top:6px; }
+    #perfSummaryTable th, #perfSummaryTable td, #summaryTable th, #summaryTable td { border:1px solid #e5e7eb; padding:6px 8px; text-align:left; }
+    #perfSummaryTable th { text-align:center; background:#f3f4f6; font-weight:900; }
+    #perfSummaryTable tr td:first-child { width:30%; font-weight:900; background:#f9fafb; }
+    #summaryTable th { background:#e5e7eb; font-weight:900; text-align:center; }
+    .footer-print { text-align:center; font-size:0.85rem; color:#6b7280; padding:8px 0 10px; margin-top:10px; font-weight:700; }
+    @media print {
+      body { background:#fff }
+      .page { margin:0; max-width:100% }
+      .actions { display:none }
+      .footer-print { position:fixed; bottom:0; left:0; right:0 }
+      canvas { background: #ffffff !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <h1 id="mainHeading">RTIS Analysis</h1>
+      <div class="subtitle">Web SPM / RTIS report (final — bold & high visibility)</div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="fileInput">SPM CSV (1-second data):</label>
+          <input type="file" id="fileInput" accept=".csv" />
+          <span style="font-size:0.85rem;color:#374151;font-weight:700;">
+            Required columns: <b>Logging Time</b> (or <b>Gps time</b), <b>Speed</b>, <b>distFromPrevLatLng</b>, <b>stationCode</b>.
+          </span>
+        </div>
+
+        <div class="field"><label for="driverName">LP Name :</label><input type="text" id="driverName" placeholder="LP Name" /></div>
+        <div class="field"><label for="trainNo">Train No :</label><input type="text" id="trainNo" placeholder="Train No" /></div>
+        <div class="field"><label for="locoNo">Loco No :</label><input type="text" id="locoNo" placeholder="Loco No" /></div>
+        <div class="field"><label for="runDate">Date (Run Date) :</label><input type="date" id="runDate" /></div>
+        <div class="field"><label for="mps">MPS (km/h) :</label><input type="number" id="mps" placeholder="e.g. 100" /></div>
+
+        <div class="field"><label for="startStation">From Station :</label><select id="startStation"><option value="">--Select--</option></select></div>
+        <div class="field"><label for="endStation">To Station :</label><select id="endStation"><option value="">--Select--</option></select></div>
+
+        <div class="field"><label for="nominatedCli">Nominated CLI :</label><input type="text" id="nominatedCli" placeholder="Nominated CLI" /></div>
+
+        <div class="field"><label for="analysedBy">Analyzed By :</label><input type="text" id="analysedBy" placeholder="Analyzed By" /></div>
+        <div class="field"><label for="analysedOn">Analyzed On :</label><input type="date" id="analysedOn" /></div>
+
+        <div class="field">
+          <label for="hFileInput">H Events Excel (upload):</label>
+          <input type="file" id="hFileInput" accept=".xlsx,.xls,.csv" />
+          <span style="font-size:0.85rem;color:#374151;font-weight:700;">
+            Sheet must mark `H` rows and have the next-row `A` (parser takes A-row speed; fallback: numeric on H-row).
+          </span>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label for="cliRemarkRaw">CLI Remark (raw):</label>
+          <textarea id="cliRemarkRaw" placeholder="Paste CLI remark raw text here (will appear on irregularities print)"></textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="plotBtn">▷ Plot &amp; Generate Report</button>
+        <button type="button" id="printBtn">🖨 Print</button>
+        <button type="button" id="printIrregBtn">📄 Print Irregularities</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>1. GPS Time vs Speed</h2>
+      <div class="chart-card">
+        <div class="chart-wrapper"><canvas id="speedChart"></canvas></div>
+        <div class="footer-note">
+          X-axis: <b>Logging Time</b> (single A-mark per station shown). H events show speed numeric callouts. Stops are single marker per station.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. BFT / BPT Chart (First 10 km from Start)</h2>
+      <div class="chart-card">
+        <div class="chart-wrapper"><canvas id="distance10Chart"></canvas></div>
+        <div id="bftBptInfo" class="footer-note"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Distance from Stoppage vs Speed — Last 3.0 km</h2>
+      <div class="chart-card">
+        <div id="stoppageCharts"></div>
+        <div class="footer-note">
+          Each mini chart: X-axis = <b>Distance from stoppage (m)</b> (about 3000 → 0), ticks every 100 m. H markers show home-signal image under the H marker and H speed is included in callouts and summary.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5. Performance Analysis Summary</h2>
+      <div class="chart-card">
+        <table id="perfSummaryTable"><thead><tr><th colspan="2">Performance Analysis Summary</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>6. Station-wise Speed Summary</h2>
+      <div class="chart-card">
+        <table id="summaryTable">
+          <thead>
+            <tr>
+              <th>Station</th>
+              <th>Speed @3000 m</th>
+              <th>Speed @1500 m</th>
+              <th>Speed @1000 m</th>
+              <th>Speed @100 m</th>
+              <th>Speed @20 m</th>
+              <th>Home speed (km/h)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-print">Developed by RAJEESH RAJ CLI/KRCL</div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+    // HOME SIGNAL IMAGE PATH (adjust if necessary)
+    const HOME_SIGNAL_PATH = "/mnt/data/home signal.jpg";
+    let HOME_SIGNAL_DATAURL = null;
+
+    // ---------- Chart Defaults: Bold & high-visibility ----------
+    Chart.defaults.font.size = 12;
+    Chart.defaults.font.weight = "700";
+    Chart.defaults.color = "#0b1220";
+    Chart.defaults.elements.line.borderWidth = 3;
+    Chart.defaults.elements.line.tension = 0.25;
+    Chart.defaults.elements.point.radius = 6;
+    Chart.defaults.elements.point.hoverRadius = 8;
+    Chart.defaults.elements.point.borderWidth = 2;
+    Chart.defaults.scale.grid.color = "#cfdde6";
+    Chart.defaults.scale.grid.lineWidth = 1.2;
+
+    // ---------- Globals ----------
+    let mainSpeedChart, distance10Chart;
+    let stoppageChartsInstances = [];
+    let rawData = null;
+    let bftInfo = null, bptInfo = null, stoppageInfoList = [], mpsMaxInfo = null;
+    const LIMIT_1000M = 60;
+    const DEFAULT_COLOR = "#0b5ed7";
+    let hEvents = []; // {rowIdx,eventTimeStr,distanceKm,aSpeed,mappedIdx,mappedDistKm,stationCode}
+
+    // load home signal as dataURL
+    async function loadHomeSignalDataUrl() {
+      try {
+        const resp = await fetch(HOME_SIGNAL_PATH);
+        if (!resp.ok) { console.warn("Home signal image not found at", HOME_SIGNAL_PATH); return null; }
+        const blob = await resp.blob();
+        return await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn("Error loading home signal image:", e);
+        return null;
+      }
+    }
+
+    // ---------- CSV parser ----------
+    function csvSplit(line) {
+      const res = []; let cur = "", inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"' ) { if (inQuotes && line[i+1] === '"') { cur += '"'; i++; continue; } inQuotes = !inQuotes; continue; }
+        if (ch === ',' && !inQuotes) { res.push(cur); cur = ""; continue; }
+        cur += ch;
+      }
+      res.push(cur); return res;
+    }
+
+    function parseTimeToSecondsOfDay(t) {
+      if (!t) return null;
+      const hhmmss = (""+t).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (hhmmss) {
+        const h = parseInt(hhmmss[1],10);
+        const m = parseInt(hhmmss[2],10);
+        const s = hhmmss[3] ? parseInt(hhmmss[3],10) : 0;
+        return h*3600 + m*60 + s;
+      }
+      const dt = new Date(t);
+      if (!isNaN(dt.getTime())) return dt.getHours()*3600 + dt.getMinutes()*60 + dt.getSeconds();
+      return null;
+    }
+
+    function todayISODate() { const d = new Date(); const mm = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); return `${d.getFullYear()}-${mm}-${dd}`; }
+    function getMpsValue() { const val = parseFloat(document.getElementById("mps").value); if (isNaN(val) || val <= 0) return null; return val; }
+
+    function parseCsv(text) {
+      if (!text) throw new Error("Empty CSV content");
+      const lines = text.replace(/\r\n/g,"\n").split("\n").filter(l => l.trim().length > 0);
+      if (lines.length < 2) throw new Error("CSV seems to be empty.");
+      const headers = csvSplit(lines[0].trim()).map(h => h.trim());
+      let idxTime = headers.indexOf("Logging Time");
+      if (idxTime === -1) idxTime = headers.indexOf("Gps time");
+      if (idxTime === -1) idxTime = headers.findIndex(h => /time/i.test(h));
+      const idxSpeed = headers.findIndex(h => /^speed$/i.test(h));
+      const idxDistPrev = headers.findIndex(h => /distFromPrevLatLng|distFromPrevLatLng|distfromprevlatlng|dist[iI]nprev/i.test(h));
+      let idxStation = headers.findIndex(h => /station/i.test(h));
+      if (idxTime === -1 || idxSpeed === -1 || idxDistPrev === -1) {
+        throw new Error("Required columns not found. Need: 'Logging Time' (or 'Gps time'), 'Speed', 'distFromPrevLatLng'.");
+      }
+
+      const timeLabels = [], speeds = [], distanceKm = [], stationCodes = [];
+      let cumulativeMeters = 0;
+
+      for (let r = 1; r < lines.length; r++) {
+        const parts = csvSplit(lines[r]);
+        const time = parts[idxTime] !== undefined ? parts[idxTime].trim() : (timeLabels.length ? timeLabels[timeLabels.length-1] : "");
+        const speedVal = parts[idxSpeed] !== undefined ? parseFloat(parts[idxSpeed]) : NaN;
+        const distStep = parts[idxDistPrev] !== undefined ? parseFloat(parts[idxDistPrev]) : NaN;
+        const stn = (idxStation !== -1 && parts[idxStation] !== undefined) ? parts[idxStation].trim() : "";
+        const s = isNaN(speedVal) ? 0 : speedVal;
+        const dStep = isNaN(distStep) ? 0 : distStep;
+        cumulativeMeters += dStep;
+        timeLabels.push(time);
+        speeds.push(s);
+        distanceKm.push(cumulativeMeters / 1000.0);
+        stationCodes.push(stn || "");
+      }
+
+      const stoppageIndices = detectStoppages(speeds);
+      return { timeLabels, speeds, distanceKm, stationCodes, stoppageIndices };
+    }
+
+    function detectStoppages(speeds) {
+      const indices = [];
+      const lookAhead = 5;
+      for (let i = 1; i < speeds.length; i++) {
+        if (speeds[i] === 0 && speeds[i-1] > 0) {
+          let zerosAhead = 0;
+          for (let k = 1; k <= lookAhead && i + k < speeds.length; k++) {
+            if (speeds[i + k] === 0) zerosAhead++;
+          }
+          if (zerosAhead >= 2 || i >= speeds.length - lookAhead) indices.push(i);
+        }
+      }
+      return indices;
+    }
+
+    function detectBFT(distanceKm, speeds) {
+      const maxDist = 2; let startIndex = -1;
+      for (let i = 1; i < Math.min(distanceKm.length-1, Math.floor(distanceKm.length)); i++) {
+        if (distanceKm[i] > maxDist) break;
+        if (speeds[i] >= 10 && speeds[i] <= 15 && speeds[i+1] < speeds[i]) { startIndex = i; break; }
+      }
+      if (startIndex === -1) return null;
+      let endIndex = -1;
+      for (let j = startIndex+1; j < distanceKm.length; j++) {
+        if (distanceKm[j] > maxDist + 0.5) break;
+        if (speeds[j] <= 2 || speeds[j] > speeds[j-1]) { endIndex = j; break; }
+      }
+      if (endIndex === -1) endIndex = Math.min(startIndex+3, distanceKm.length-1);
+      return { startIndex, endIndex, startSpeed: speeds[startIndex], endSpeed: speeds[endIndex], startDist: distanceKm[startIndex], endDist: distanceKm[endIndex] };
+    }
+
+    function detectBPT(distanceKm, speeds, bftInfo) {
+      const maxSearchDistFromStart = 10;
+      const searchStart = bftInfo ? bftInfo.endIndex + 1 : 0;
+      let startIndex = -1;
+      for (let i = searchStart; i < distanceKm.length - 1; i++) {
+        if (distanceKm[i] > maxSearchDistFromStart) break;
+        if (speeds[i] >= 58 && speeds[i] <= 65 && speeds[i+1] < speeds[i]) { startIndex = i; break; }
+      }
+      if (startIndex === -1) return null;
+      let lowestSpeed = speeds[startIndex], lowestIndex = startIndex;
+      for (let j = startIndex; j < distanceKm.length && distanceKm[j] <= distanceKm[startIndex] + 2.0; j++) {
+        if (speeds[j] < lowestSpeed) { lowestSpeed = speeds[j]; lowestIndex = j; }
+      }
+      return { startIndex, endIndex: lowestIndex, startSpeed: speeds[startIndex], endSpeed: speeds[lowestIndex], lowestSpeed, startDist: distanceKm[startIndex], endDist: distanceKm[lowestIndex] };
+    }
+
+    function sampleSpeedBeforeStop(distanceKm, speeds, stopIndex, deltaKm) {
+      const stopDist = distanceKm[stopIndex];
+      const target = stopDist - deltaKm;
+      if (target <= distanceKm[0]) return { dist: distanceKm[0], speed: speeds[0], idx: 0 };
+      let bestIdx = 0, bestDiff = Infinity;
+      for (let i = 0; i <= stopIndex; i++) {
+        const d = Math.abs(distanceKm[i] - target);
+        if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+      }
+      return { dist: distanceKm[bestIdx], speed: speeds[bestIdx], idx: bestIdx };
+    }
+
+    // ---------- Plugins (bold callouts, stop labels, BFT/BPT badges, H callouts) ----------
+    const enhancedWhiteCanvasPlugin = {
+      id: "enhancedWhiteCanvas",
+      beforeInit(chart) {
+        try {
+          const canvas = chart.canvas;
+          if (canvas && canvas.style && canvas.style.setProperty) {
+            canvas.style.setProperty("background-color", "#ffffff", "important");
+            canvas.style.setProperty("filter", "none", "important");
+            canvas.style.setProperty("-webkit-filter", "none", "important");
+            canvas.style.setProperty("mix-blend-mode", "normal", "important");
+          }
+        } catch (e) {}
+      },
+      beforeDraw(chart) {
+        try {
+          const ctx = chart.ctx;
+          const canvas = chart.canvas;
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        } catch (err) {}
+      }
+    };
+
+    function roundRect(ctx, x, y, w, h, r, fill) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+    }
+    function roundRectStroke(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    const hCalloutsPlugin = {
+      id: "hCalloutsPlugin",
+      afterDatasetsDraw(chart) {
+        if (chart.canvas.id !== "speedChart") return;
+        if (!chart.data || !chart.data.datasets) return;
+        const ctx = chart.ctx;
+        ctx.save();
+        for (let dsIndex = 0; dsIndex < chart.data.datasets.length; dsIndex++) {
+          const ds = chart.data.datasets[dsIndex];
+          if (!ds || !ds.label) continue;
+          if (!/H events/i.test(ds.label)) continue;
+          const meta = chart.getDatasetMeta(dsIndex);
+          if (!meta || !meta.data) continue;
+          meta.data.forEach((pt, i) => {
+            const px = pt.x;
+            const py = pt.y;
+            const raw = ds.data && ds.data[i] ? ds.data[i] : null;
+            let speedText = null;
+            if (raw && raw.meta && raw.meta.aSpeed != null) speedText = Math.round(raw.meta.aSpeed).toString();
+            else if (raw && raw.y != null && typeof raw.y === "number") speedText = Math.round(raw.y).toString();
+            else if (raw && typeof raw === "number") speedText = Math.round(raw).toString();
+            if (!speedText) return;
+
+            ctx.font = "bold 13px system-ui, Arial";
+            const padding = 8;
+            const textWidth = Math.min(200, ctx.measureText(speedText).width);
+            const boxW = textWidth + padding * 2;
+            const boxH = 26;
+            let boxX = px + 8;
+            let boxY = py - boxH/2 - 8;
+            if (boxX + boxW > chart.width - 8) boxX = px - boxW - 8;
+            if (boxX < 8) boxX = 8;
+            if (boxY < 8) boxY = 8;
+
+            ctx.fillStyle = "#ffffff";
+            roundRect(ctx, boxX, boxY, boxW, boxH, 8, true);
+            ctx.strokeStyle = "rgba(0,0,0,0.85)";
+            ctx.lineWidth = 1.4;
+            roundRectStroke(ctx, boxX, boxY, boxW, boxH, 8);
+            ctx.fillStyle = "#111827";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(speedText, boxX + boxW/2, boxY + boxH/2);
+          });
+        }
+        ctx.restore();
+      }
+    };
+
+    const bftBptCalloutsPlugin = {
+      id: "bftBptCallouts",
+      afterDatasetsDraw(chart) {
+        if (chart.canvas.id !== "distance10Chart") return;
+        if (!bftInfo && !bptInfo) return;
+        const ctx = chart.ctx, xScale = chart.scales.x, yScale = chart.scales.y, baseData = chart.data.datasets[0].data;
+        ctx.save(); ctx.font = "bold 14px system-ui, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        if (bftInfo && typeof bftInfo.chartIndex === "number" && bftInfo.chartIndex >= 0) {
+          const idx = bftInfo.chartIndex;
+          const x = xScale.getPixelForValue(idx);
+          const y = yScale.getPixelForValue(baseData[idx]);
+          const text = `BFT START ${Math.round(bftInfo.startSpeed)} KMPH`;
+          drawCallout(ctx, x, y - 10, text);
+        }
+        if (bptInfo && typeof bptInfo.chartIndex === "number" && bptInfo.chartIndex >= 0) {
+          const idx = bptInfo.chartIndex;
+          const x = xScale.getPixelForValue(idx);
+          const y = yScale.getPixelForValue(baseData[idx]);
+          const text = `BPT START ${Math.round(bptInfo.startSpeed)} KMPH`;
+          drawCallout(ctx, x, y - 10, text);
+        }
+        ctx.restore();
+
+        function drawCallout(ctx, x, y, text) {
+          const padding = 10;
+          ctx.font = "bold 13px system-ui, Arial";
+          const w = ctx.measureText(text).width + padding * 2;
+          const h = 30;
+          let bx = x - w/2;
+          let by = y - h;
+          if (bx < 8) bx = 8;
+          if (bx + w > ctx.canvas.width - 8) bx = ctx.canvas.width - 8 - w;
+          if (by < 8) by = 8;
+          ctx.fillStyle = "#111827";
+          roundRect(ctx, bx, by, w, h, 10, true);
+          ctx.beginPath();
+          ctx.moveTo(x - 10, by + h);
+          ctx.lineTo(x + 10, by + h);
+          ctx.lineTo(x, by + h + 10);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(text, bx + w/2, by + h/2);
+        }
+      }
+    };
+
+    const mpsMaxPlugin = {
+      id: "mpsMaxPlugin",
+      afterDatasetsDraw(chart) {
+        if (chart.canvas.id !== "speedChart") return;
+        if (!mpsMaxInfo) return;
+        const ctx = chart.ctx, xScale = chart.scales.x, yScale = chart.scales.y, data = chart.data.datasets[0].data;
+        const idx = mpsMaxInfo.idx;
+        if (idx == null || idx < 0 || idx >= data.length) return;
+        const x = xScale.getPixelForValue(idx), y = yScale.getPixelForValue(data[idx]);
+        const mpsVal = getMpsValue(); if (!mpsVal) return;
+        ctx.save(); ctx.fillStyle = "red"; ctx.font = "bold 11px system-ui, Arial"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        const text = `MPS ${mpsVal.toFixed(0)} Max ${mpsMaxInfo.speed.toFixed(0)}`;
+        ctx.fillText(text, x, y - 8);
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+    };
+
+    const stopLabelsPlugin = {
+      id: "stopLabelsPlugin",
+      afterDatasetsDraw(chart) {
+        if (chart.canvas.id !== "speedChart") return;
+        const ctx = chart.ctx;
+        ctx.save();
+        const dsIndex = chart.data.datasets.findIndex(ds => ds && ds.label && /Stops \(0 km\/h\)/i.test(ds.label));
+        if (dsIndex === -1) { ctx.restore(); return; }
+        const meta = chart.getDatasetMeta(dsIndex);
+        if (!meta || !meta.data) { ctx.restore(); return; }
+
+        ctx.font = "bold 12px system-ui, Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+
+        meta.data.forEach(pt => {
+          try {
+            // Chart.js v4 element access
+            const raw = pt && pt.$context && pt.$context.raw ? pt.$context.raw : (pt && pt._model ? pt._model : null);
+            const station = raw && raw.meta && raw.meta.station ? String(raw.meta.station) : "";
+            if (!station) return;
+
+            const px = pt.x;
+            const py = pt.y;
+
+            const text = station;
+            const paddingX = 8;
+            const paddingY = 6;
+            const tw = Math.min(180, ctx.measureText(text).width);
+            const boxW = tw + paddingX * 2;
+            const boxH = 22;
+
+            let boxX = px - boxW/2;
+            let boxY = py + 8;
+
+            if (boxX < 6) boxX = 6;
+            if (boxX + boxW > chart.width - 6) boxX = chart.width - 6 - boxW;
+
+            ctx.fillStyle = "#ffffff";
+            roundRect(ctx, boxX, boxY, boxW, boxH, 8, true);
+            ctx.strokeStyle = "rgba(0,0,0,0.85)";
+            ctx.lineWidth = 1.2;
+            roundRectStroke(ctx, boxX, boxY, boxW, boxH, 8);
+
+            ctx.fillStyle = "#111827";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(text, boxX + boxW/2, boxY + boxH/2);
+          } catch (e) {}
+        });
+
+        ctx.restore();
+      }
+    };
+
+    Chart.register(enhancedWhiteCanvasPlugin, hCalloutsPlugin, bftBptCalloutsPlugin, mpsMaxPlugin, stopLabelsPlugin);
+
+    // ---------- Helper find index by time ----------
+    function findClosestIndexByTimeLabel(targetTimeStr) {
+      if (!rawData || !rawData.timeLabels || rawData.timeLabels.length === 0) return null;
+      const targetSec = parseTimeToSecondsOfDay(targetTimeStr);
+      if (targetSec == null) return null;
+      let bestIdx = 0, bestDiff = Infinity;
+      for (let i = 0; i < rawData.timeLabels.length; i++) {
+        const t = rawData.timeLabels[i];
+        const s = parseTimeToSecondsOfDay(t);
+        if (s == null) continue;
+        let diff = Math.abs(s - targetSec);
+        diff = Math.min(diff, 86400 - diff);
+        if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+      }
+      return bestDiff < 300 ? bestIdx : null;
+    }
+
+    function mapHEventsToSPM() {
+      if (!rawData) return;
+      hEvents.forEach(ev => {
+        ev.mappedIdx = null;
+        ev.mappedDistKm = null;
+        ev.stationCode = "";
+        if (ev.eventTimeStr) {
+          const idx = findClosestIndexByTimeLabel(ev.eventTimeStr);
+          if (idx != null) {
+            ev.mappedIdx = idx;
+            ev.mappedDistKm = rawData.distanceKm[idx];
+            ev.stationCode = rawData.stationCodes[idx] || "";
+            return;
+          }
+        }
+        if (typeof ev.distanceKm === "number" && !isNaN(ev.distanceKm)) {
+          let bestIdx = 0, bestDiff = Infinity;
+          for (let i = 0; i < rawData.distanceKm.length; i++) {
+            const d = Math.abs(rawData.distanceKm[i] - ev.distanceKm);
+            if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+          }
+          if (bestDiff <= 0.005) {
+            ev.mappedIdx = bestIdx;
+            ev.mappedDistKm = rawData.distanceKm[bestIdx];
+            ev.stationCode = rawData.stationCodes[bestIdx] || "";
+            return;
+          }
+        }
+        if (rawData.timeLabels.length > 0) {
+          ev.mappedIdx = Math.round(rawData.timeLabels.length / 2);
+          ev.mappedDistKm = rawData.distanceKm[ev.mappedIdx];
+        }
+      });
+    }
+
+    // ---------- Plot main speed chart (single stop marker per station, H callouts restored) ----------
+    function plotMainSpeedChart(data) {
+      const ctx = document.getElementById("speedChart").getContext("2d");
+      if (mainSpeedChart) mainSpeedChart.destroy();
+
+      const { timeLabels, speeds, stationCodes } = data;
+      const fromStn = document.getElementById("startStation").value;
+      const toStn = document.getElementById("endStation").value;
+      const section = getMainChartSection(data, fromStn, toStn);
+      let startIndexUsed = 0, endIndexUsed = timeLabels.length - 1;
+      if (section) { startIndexUsed = section.startIdx; endIndexUsed = section.endIdx; }
+
+      const labelsSub = timeLabels.slice(startIndexUsed, endIndexUsed + 1);
+      const speedsSub = speeds.slice(startIndexUsed, endIndexUsed + 1);
+
+      // first index per station inside visible range
+      const firstIndexMap = {};
+      for (let i = startIndexUsed; i <= endIndexUsed; i++) {
+        const st = stationCodes[i] || "";
+        if (st && firstIndexMap[st] === undefined) firstIndexMap[st] = i - startIndexUsed;
+      }
+
+      // compute MPS exceed info
+      mpsMaxInfo = null;
+      const mpsVal = getMpsValue();
+      if (mpsVal) {
+        let maxSpeedAbove = -Infinity, maxIdxLocal = null;
+        for (let i = 0; i < speedsSub.length; i++) {
+          if (speedsSub[i] > mpsVal && speedsSub[i] > maxSpeedAbove) { maxSpeedAbove = speedsSub[i]; maxIdxLocal = i; }
+        }
+        if (maxIdxLocal != null) mpsMaxInfo = { idx: maxIdxLocal, speed: maxSpeedAbove };
+      }
+
+      // H scatter dataset
+      const hScatter = [];
+      hEvents.forEach(ev => {
+        if (typeof ev.mappedIdx !== "number") return;
+        if (ev.mappedIdx >= startIndexUsed && ev.mappedIdx <= endIndexUsed) {
+          const localIdx = ev.mappedIdx - startIndexUsed;
+          const y = (typeof data.speeds[ev.mappedIdx] === "number") ? data.speeds[ev.mappedIdx] : (ev.aSpeed ?? null);
+          if (y != null) {
+            hScatter.push({
+              x: localIdx,
+              y,
+              meta: { rawIdx: ev.mappedIdx, station: ev.stationCode || "", eventTime: ev.eventTimeStr || "", aSpeed: ev.aSpeed }
+            });
+          }
+        }
+      });
+
+      // single stop markers (0 speed) - one per station
+      const stopMarkers = [];
+      stoppageInfoList.forEach(si => {
+        if (typeof si.stopIndex === "number") {
+          if (si.stopIndex >= startIndexUsed && si.stopIndex <= endIndexUsed) {
+            const localIdx = si.stopIndex - startIndexUsed;
+            stopMarkers.push({ x: localIdx, y: 0, meta: { station: si.station, stopTime: si.stopTime } });
+          }
+        }
+      });
+
+      const datasets = [{
+        label: "Speed (km/h)",
+        data: speedsSub,
+        borderWidth: 3,
+        tension: 0.25,
+        pointRadius: 0,
+        borderColor: DEFAULT_COLOR,
+        backgroundColor: DEFAULT_COLOR,
+        spanGaps: true,
+        segment: {
+          borderColor: ctxSeg => {
+            const mps = getMpsValue();
+            if (!mps) return DEFAULT_COLOR;
+            const v = ctxSeg.p1.parsed.y;
+            return v > mps ? "red" : DEFAULT_COLOR;
+          }
+        }
+      }];
+
+      if (hScatter.length) {
+        datasets.push({
+          label: "H events",
+          data: hScatter.map(p => ({ x: p.x, y: p.y, meta: p.meta })),
+          showLine: false,
+          pointRadius: 7,
+          pointHoverRadius: 9,
+          pointStyle: 'rectRot',
+          parsing: false,
+          borderColor: '#d62828',
+          backgroundColor: '#d62828'
+        });
+      }
+
+      if (stopMarkers.length) {
+        datasets.push({
+          label: "Stops (0 km/h)",
+          data: stopMarkers.map(s => ({ x: s.x, y: s.y, meta: s.meta })),
+          showLine: false,
+          pointRadius: 9,
+          pointStyle: 'circle',
+          parsing: false,
+          borderColor: '#111827',
+          backgroundColor: '#ffffff',
+          borderWidth: 2
+        });
+      }
+
+      mainSpeedChart = new Chart(ctx, {
+        type: "line",
+        data: { labels: labelsSub, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 12, right: 12, top: 12, bottom: 72 } },
+          scales: {
+            x: {
+              title: { display: true, text: "Logging Time", font: { weight: "900", size: 14 }, color: "#0b1220" },
+              ticks: {
+                autoSkip: true,
+                maxRotation: 60,
+                minRotation: 25,
+                padding: 8,
+                font: { weight: "700", size: 12 },
+                color: "#0b1220",
+                callback: function(value, index) {
+                  const globalIdx = startIndexUsed + index;
+                  const st = stationCodes[globalIdx] || "";
+                  if (!st) return "";
+                  if (firstIndexMap[st] === index) return st;
+                  return "";
+                }
+              },
+              grid: { color: '#e6eef5', lineWidth: 1.2 },
+              offset: true
+            },
+            y: {
+              title: { display: true, text: "Speed (km/h)", font: { weight: "900", size: 14 }, color: "#0b1220" },
+              beginAtZero: true,
+              ticks: { color: '#0b1220', font: { weight: "700", size: 12 } },
+              grid: { color: '#e6eef5', lineWidth: 1.2 }
+            }
+          },
+          plugins: {
+            legend: { display: true, labels: { font: { weight: "800", size: 12 } } },
+            tooltip: {
+              mode: "nearest",
+              intersect: true,
+              callbacks: {
+                title(items) {
+                  if (!items || !items.length) return "";
+                  const idx = items[0].dataIndex;
+                  const globalIdx = startIndexUsed + idx;
+                  return timeLabels[globalIdx] || "";
+                },
+                label(context) {
+                  if (!context) return "";
+                  if (/H events/i.test(context.dataset.label)) {
+                    const meta = context.dataset.data[context.dataIndex] && context.dataset.data[context.dataIndex].meta
+                                 ? context.dataset.data[context.dataIndex].meta
+                                 : null;
+                    const speedText = `${context.parsed.y} km/h`;
+                    const station = meta && meta.station ? `Station: ${meta.station}` : null;
+                    const time = meta && meta.eventTime ? `Time: ${meta.eventTime}` : null;
+                    return [ `H event`, station, time, `Speed: ${speedText}` ].filter(Boolean).join(" • ");
+                  }
+                  if (/Stops/i.test(context.dataset.label)) {
+                    const meta = context.dataset.data[context.dataIndex] && context.dataset.data[context.dataIndex].meta ? context.dataset.data[context.dataIndex].meta : null;
+                    if (meta && meta.station) return `Stop: ${meta.station} (${meta.stopTime || ""})`;
+                  }
+                  return `${context.dataset.label}: ${context.parsed.y} km/h`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      mainSpeedChart.update();
+    }
+
+    // ---------- Distance first 10 km (BFT/BPT) ----------
+    function plotDistanceFirst10Km(data) {
+      const ctx = document.getElementById("distance10Chart").getContext("2d");
+      if (distance10Chart) distance10Chart.destroy();
+
+      const { distanceKm, speeds } = data;
+      const limitKm = 10;
+      const distFiltered = [];
+      const speedFiltered = [];
+      const originalIndexMap = [];
+
+      for (let i = 0; i < distanceKm.length; i++) {
+        if (distanceKm[i] <= limitKm) {
+          distFiltered.push(distanceKm[i]);
+          speedFiltered.push(speeds[i]);
+          originalIndexMap.push(i);
+        }
+      }
+
+      bftInfo = detectBFT(distanceKm, speeds);
+      bptInfo = detectBPT(distanceKm, speeds, bftInfo);
+
+      if (bftInfo) bftInfo.chartIndex = originalIndexMap.indexOf(bftInfo.startIndex);
+      if (bptInfo) bptInfo.chartIndex = originalIndexMap.indexOf(bptInfo.startIndex);
+
+      distance10Chart = new Chart(ctx, {
+        type: "line",
+        data: { labels: distFiltered, datasets: [{ label: "Speed (km/h)", data: speedFiltered, borderWidth: 3, tension: 0.25, pointRadius: 0, borderColor: "#0b5ed7" }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { bottom: 32 } },
+          scales: {
+            x: { title: { display: true, text: "Distance from Start (km)", font: { weight: "900" } }, ticks: { callback: function(value) { const lbl = this.getLabelForValue(value); const num = parseFloat(lbl); return isNaN(num) ? lbl : num.toFixed(2); }, font: { weight: "700" }, color: "#0b1220" }, grid: { color: '#e6eef5' } },
+            y: { title: { display: true, text: "Speed (km/h)", font: { weight: "900" } }, beginAtZero: true, ticks: { font: { weight: "700" } }, grid: { color: '#e6eef5' } }
+          },
+          plugins: { legend: { display: true }, tooltip: { mode: "index", intersect: false } }
+        }
+      });
+      distance10Chart.update();
+
+      const infoDiv = document.getElementById("bftBptInfo");
+      let html = "";
+      if (bftInfo) {
+        html += `<div><span class="label">BFT</span> start: <b>${bftInfo.startSpeed.toFixed(1)}</b> KMPH at <b>${bftInfo.startDist.toFixed(3)}</b> km from start.</div>`;
+      } else {
+        html += `<div><span class="label">BFT</span>: Not clearly detected (10–15 KMPH band).</div>`;
+      }
+      if (bptInfo) {
+        html += `<div><span class="label">BPT</span> start: <b>${bptInfo.startSpeed.toFixed(1)}</b> KMPH at <b>${bptInfo.startDist.toFixed(3)}</b> km from start.</div>`;
+      } else {
+        html += `<div><span class="label">BPT</span>: Not clearly detected (58–65 KMPH band).</div>`;
+      }
+      infoDiv.innerHTML = html;
+    }
+
+    // ---------- Stoppage charts (3.0 km window, 100 m ticks, home-signal image & H badges) ----------
+    function plotStoppageSegmentCharts(data) {
+      const { distanceKm, speeds, stoppageIndices, stationCodes, timeLabels } = data;
+      const container = document.getElementById("stoppageCharts");
+
+      container.innerHTML = "";
+      stoppageChartsInstances.forEach(ch => ch.destroy());
+      stoppageChartsInstances = [];
+      stoppageInfoList = [];
+
+      const windowKm = 3.0;
+      const maxM = windowKm * 1000;
+
+      if (!stoppageIndices.length) {
+        const msg = document.createElement("div");
+        msg.textContent = "No stoppages detected (speed not going to 0).";
+        msg.style.fontSize = "0.95rem";
+        msg.style.color = "#374151";
+        container.appendChild(msg);
+        return;
+      }
+
+      const homeImgDataUrl = HOME_SIGNAL_DATAURL;
+
+      stoppageIndices.forEach((stopIdx, index) => {
+        const stopDist = distanceKm[stopIdx];
+        const fromDist = stopDist - windowKm;
+
+        const segPoints = [];
+        for (let i = 0; i <= stopIdx; i++) {
+          if (distanceKm[i] >= fromDist && distanceKm[i] <= stopDist) {
+            const offsetM = (stopDist - distanceKm[i]) * 1000;
+            segPoints.push({ x: offsetM, y: speeds[i], origIdx: i });
+          }
+        }
+        if (segPoints.length < 2) return;
+
+        const s3000 = sampleSpeedBeforeStop(distanceKm, speeds, stopIdx, 3.0);
+        const s1500 = sampleSpeedBeforeStop(distanceKm, speeds, stopIdx, 1.5);
+        const s1000 = sampleSpeedBeforeStop(distanceKm, speeds, stopIdx, 1.0);
+        const s500  = sampleSpeedBeforeStop(distanceKm, speeds, stopIdx, 0.5);
+        const s100  = sampleSpeedBeforeStop(distanceKm, speeds, stopIdx, 0.1);
+        const s20   = sampleSpeedBeforeStop(distanceKm, speeds, stopIdx, 0.02);
+
+        const stnCode = stationCodes[stopIdx] || `Stoppage ${index + 1}`;
+        const stopTime = timeLabels[stopIdx] || "-";
+        let startIdx = stopIdx;
+        for (let i = stopIdx; i < speeds.length; i++) {
+          if (speeds[i] > 0) { startIdx = i; break; }
+        }
+        const startTime = timeLabels[startIdx] || "-";
+
+        stoppageInfoList.push({
+          station: stnCode,
+          stopIndex: stopIdx,
+          stopDist,
+          stopTime,
+          startTime,
+          s3000,
+          s1500,
+          s1000,
+          s500,
+          s100,
+          s20
+        });
+
+        const card = document.createElement("div");
+        card.className = "stoppage-card";
+
+        const title = document.createElement("div");
+        title.className = "stoppage-title";
+        title.textContent = `${stnCode} at ${stopDist.toFixed(3)} km`;
+        card.appendChild(title);
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "stoppage-chart-wrapper";
+        const canvas = document.createElement("canvas");
+        wrapper.appendChild(canvas);
+        card.appendChild(wrapper);
+
+        const hSpeedsForThisStop = [];
+        const hMarkers = [];
+        hEvents.forEach(ev => {
+          if (typeof ev.mappedIdx === "number") {
+            const dkm = rawData && rawData.distanceKm ? rawData.distanceKm[ev.mappedIdx] : ev.mappedDistKm;
+            if (typeof dkm === "number" && dkm >= fromDist && dkm <= stopDist) {
+              const speedVal = ev.aSpeed != null ? ev.aSpeed : (rawData && rawData.speeds ? rawData.speeds[ev.mappedIdx] : null);
+              if (speedVal != null) hSpeedsForThisStop.push(speedVal);
+              const offsetM = (stopDist - dkm) * 1000;
+              hMarkers.push({ x: offsetM, y: speedVal != null ? speedVal : (rawData ? rawData.speeds[ev.mappedIdx] : 0), meta: ev });
+            }
+          } else if (typeof ev.mappedDistKm === "number") {
+            if (ev.mappedDistKm >= fromDist && ev.mappedDistKm <= stopDist) {
+              if (ev.aSpeed != null) hSpeedsForThisStop.push(ev.aSpeed);
+              const offsetM = (stopDist - ev.mappedDistKm) * 1000;
+              hMarkers.push({ x: offsetM, y: ev.aSpeed || 0, meta: ev });
+            }
+          }
+        });
+
+        const callouts = document.createElement("div");
+        callouts.className = "stoppage-callouts";
+
+        const hSpeedsText = hSpeedsForThisStop.length ? hSpeedsForThisStop.map(s => `${s.toFixed(1)}`).join(", ") : "-";
+
+        callouts.innerHTML =
+          `<div><span class="label">3.0 km before:</span> ${s3000.speed.toFixed(1)} km/h</div>` +
+          `<div><span class="label">1.5 km before:</span> ${s1500.speed.toFixed(1)} km/h</div>` +
+          `<div><span class="label">1 km before:</span> ${s1000.speed.toFixed(1)} km/h</div>` +
+          `<div><span class="label">100 m before:</span> ${s100.speed.toFixed(1)} km/h</div>` +
+          `<div><span class="label">H Speed:</span> ${hSpeedsText} km/h</div>` +
+          `<div><span class="label">Stop:</span> ${stopTime}, <span class="label">Start:</span> ${startTime}</div>`;
+
+        card.appendChild(callouts);
+        container.appendChild(card);
+
+        const ctx = canvas.getContext("2d");
+        const speedData = segPoints.map(p => ({ x: p.x, y: p.y, origIdx: p.origIdx }));
+        const datasets = [{
+          label: "Speed (km/h)",
+          data: speedData,
+          borderWidth: 3,
+          tension: 0.25,
+          pointRadius: 0,
+          parsing: false,
+          borderColor: "#0b5ed7"
+        }];
+
+        if (hMarkers.length) {
+          datasets.push({
+            label: "H events",
+            data: hMarkers.map(h => ({ x: h.x, y: h.y, meta: h.meta })),
+            showLine: false,
+            pointRadius: 8,
+            pointStyle: 'diamond',
+            borderColor: '#d62828',
+            backgroundColor: '#d62828',
+            parsing: false
+          });
+        }
+
+        const chart = new Chart(ctx, {
+          type: "line",
+          data: { datasets },
+          options: {
+            parsing: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { type: "linear", title: { display: true, text: "Distance from Stoppage (m)", font: { weight: "900" } }, reverse: true, min: 0, max: maxM, ticks: { stepSize: 100, callback: function(v){ return `${Math.round(v)} m`; }, font: { weight: "700" }, color: "#0b1220" } },
+              y: { title: { display: true, text: "Speed (km/h)", font: { weight: "900" } }, beginAtZero: true, ticks: { font: { weight: "700" }, color: "#0b1220" } }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title(items) {
+                    const v = items[0].parsed.x;
+                    if (v === 0) return "0 m (at stop)";
+                    return `${v.toFixed(0)} m before stop`;
+                  },
+                  label(context) {
+                    if (/H events/i.test(context.dataset.label)) {
+                      const m = context.raw && context.raw.meta ? context.raw.meta : null;
+                      const speed = context.raw && context.raw.y ? `${context.raw.y.toFixed(1)}` : (m && m.aSpeed ? `${m.aSpeed.toFixed(1)}` : "");
+                      return `H ${speed ? speed + " km/h" : ""}`;
+                    }
+                    return `${context.dataset.label}: ${context.parsed.y} km/h`;
+                  }
+                }
+              }
+            }
+          },
+          plugins: [{
+            id: 'homeSignalAndHCallouts',
+            afterDraw(chart) {
+              const ctx = chart.ctx;
+              const xScale = chart.scales.x;
+              const yScale = chart.scales.y;
+
+              const ds = chart.data.datasets.find(d => d && d.label && /H events/i.test(d.label));
+              if (ds && ds.data && ds.data.length) {
+                ds.data.forEach(ptRaw => {
+                  try {
+                    const px = xScale.getPixelForValue(ptRaw.x);
+                    const py = yScale.getPixelForValue(ptRaw.y);
+                    // draw small home image below the axis
+                    const w = 22;
+                    const h = 40;
+                    const destX = px - w/2;
+                    const destY = yScale.bottom - h - 6;
+
+                    if (HOME_SIGNAL_DATAURL) {
+                      const img = new Image();
+                      img.src = HOME_SIGNAL_DATAURL;
+                      if (img.complete) {
+                        ctx.drawImage(img, destX, destY, w, h);
+                      } else {
+                        img.onload = function() { try { ctx.drawImage(img, destX, destY, w, h); } catch(e){} };
+                      }
+                    } else {
+                      // fallback: draw simple black marker / triangle if image unavailable
+                      ctx.fillStyle = "#111827";
+                      ctx.beginPath();
+                      ctx.moveTo(destX + w/2, destY + 4);
+                      ctx.lineTo(destX + w - 4, destY + h - 4);
+                      ctx.lineTo(destX + 4, destY + h - 4);
+                      ctx.closePath();
+                      ctx.fill();
+                    }
+
+                    // draw bold speed badge above H marker
+                    if (ptRaw.y != null) {
+                      const speedText = Math.round(ptRaw.y).toString();
+                      const badgeW = Math.min(66, ctx.measureText(speedText).width + 16);
+                      const badgeH = 26;
+                      const bx = px - badgeW/2;
+                      const by = py - badgeH - 10;
+                      ctx.fillStyle = "#ffffff";
+                      roundRect(ctx, bx, by, badgeW, badgeH, 8, true);
+                      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+                      ctx.lineWidth = 1.4;
+                      roundRectStroke(ctx, bx, by, badgeW, badgeH, 8);
+                      ctx.fillStyle = "#111827";
+                      ctx.font = "bold 12px system-ui, Arial";
+                      ctx.textAlign = "center";
+                      ctx.textBaseline = "middle";
+                      ctx.fillText(speedText, bx + badgeW/2, by + badgeH/2);
+                    }
+                  } catch (e) {}
+                });
+              }
+            }
+          }]
+        });
+
+        stoppageChartsInstances.push(chart);
+      });
+    }
+
+    // ---------- Performance summary & Station-wise table ----------
+    function buildPerfSummary(data) {
+      const tbody = document.querySelector("#perfSummaryTable tbody");
+      tbody.innerHTML = "";
+
+      const driverName = document.getElementById("driverName").value || "-";
+      const trainNo = document.getElementById("trainNo").value || "-";
+      const locoNo = document.getElementById("locoNo").value || "-";
+      const fromStn = document.getElementById("startStation").value || "-";
+      const toStn = document.getElementById("endStation").value || "-";
+      const runDateInput = document.getElementById("runDate").value;
+      const nominatedCli = document.getElementById("nominatedCli").value || "-";
+      const analysedBy = document.getElementById("analysedBy").value || "-";
+      const analysedOnInput = document.getElementById("analysedOn").value;
+      if (!analysedOnInput) document.getElementById("analysedOn").value = todayISODate();
+      const runDate = runDateInput ? runDateInput.split("-").reverse().join("-") : "-";
+      const analysedOn = document.getElementById("analysedOn").value ? document.getElementById("analysedOn").value.split("-").reverse().join("-") : "-";
+
+      const { timeLabels, speeds } = data;
+      let maxSpeed = -Infinity, maxIdx = 0;
+      for (let i = 0; i < speeds.length; i++) { if (speeds[i] > maxSpeed) { maxSpeed = speeds[i]; maxIdx = i; } }
+      const maxSpeedStr = maxSpeed > -Infinity ? `${maxSpeed.toFixed(1)} km/h at ${timeLabels[maxIdx]}` : "-";
+      const sumSpeed = speeds.reduce((a, b) => a + b, 0);
+      const avgSpeed = speeds.length ? (sumSpeed / speeds.length) : 0;
+      let bftSummary = "Not detected"; if (bftInfo) bftSummary = `${bftInfo.startSpeed.toFixed(1)} km/h (start)`;
+      let bptSummary = "Not detected"; if (bptInfo) bptSummary = `${bptInfo.startSpeed.toFixed(1)} km/h (start)`;
+
+      function addRow(label, value) {
+        const tr = document.createElement("tr");
+        const td1 = document.createElement("td");
+        const td2 = document.createElement("td");
+        td1.textContent = label;
+        td2.textContent = value;
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tbody.appendChild(tr);
+      }
+
+      addRow("LP Name", driverName);
+      addRow("Train No", trainNo);
+      addRow("Loco No", locoNo);
+      addRow("From Station", fromStn);
+      addRow("To Station", toStn);
+      addRow("Run Date", runDate);
+      addRow("Nominated CLI", nominatedCli);
+      addRow("Analyzed By", analysedBy);
+      addRow("Analyzed On", analysedOn);
+      addRow("Maximum Speed", maxSpeedStr);
+      addRow("Average Speed", `${avgSpeed.toFixed(1)} km/h`);
+      addRow("BFT (10–15 km/h)", bftSummary);
+      addRow("BPT (58–65 km/h)", bptSummary);
+    }
+
+    function getHomeSpeedsForStation(station) {
+      if (!hEvents || !hEvents.length) return "-";
+      const speeds = [];
+      hEvents.forEach(ev => {
+        const st = ev.stationCode || "-";
+        if (st === station) {
+          if (ev.aSpeed != null && !isNaN(ev.aSpeed)) speeds.push(ev.aSpeed);
+          else if (typeof ev.mappedIdx === "number" && rawData && rawData.speeds) {
+            const s = rawData.speeds[ev.mappedIdx];
+            if (s != null && !isNaN(s)) speeds.push(s);
+          }
+        }
+      });
+      if (!speeds.length) return "-";
+      return speeds.map(s => s.toFixed(1)).join(", ");
+    }
+
+    function buildSummaryTable() {
+      const tbody = document.querySelector("#summaryTable tbody");
+      tbody.innerHTML = "";
+
+      stoppageInfoList.forEach(info => {
+        const tr = document.createElement("tr");
+        function td(val) { const c = document.createElement("td"); c.textContent = val; return c; }
+        const homeSpeeds = getHomeSpeedsForStation(info.station);
+        tr.appendChild(td(info.station));
+        tr.appendChild(td(info.s3000.speed.toFixed(1)));
+        tr.appendChild(td(info.s1500.speed.toFixed(1)));
+        tr.appendChild(td(info.s1000.speed.toFixed(1)));
+        tr.appendChild(td(info.s100.speed.toFixed(1)));
+        tr.appendChild(td(info.s20.speed.toFixed(1)));
+        tr.appendChild(td(homeSpeeds));
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ---------- Irregularities: include H speed > 60 rule and highlight red ----------
+    function computeIrregularities() {
+      const issues = [];
+
+      // Speed @1000 m rule
+      stoppageInfoList.forEach(info => {
+        if (info.s1000.speed > LIMIT_1000M) {
+          issues.push({ text: `Station ${info.station}: Speed @1000 m = ${info.s1000.speed.toFixed(2)} km/h (should be ≤ ${LIMIT_1000M})`, type: "normal" });
+        }
+      });
+
+      // H-speed > 60 rule
+      const hStationSpeedMap = {};
+      hEvents.forEach(ev => {
+        const st = ev.stationCode || null;
+        if (!st) return;
+        let sp = null;
+        if (ev.aSpeed != null && !isNaN(ev.aSpeed)) sp = ev.aSpeed;
+        else if (typeof ev.mappedIdx === "number" && rawData && rawData.speeds) sp = rawData.speeds[ev.mappedIdx];
+        if (sp != null && !isNaN(sp)) {
+          if (!hStationSpeedMap[st] || sp > hStationSpeedMap[st]) hStationSpeedMap[st] = sp;
+        }
+      });
+      Object.keys(hStationSpeedMap).forEach(st => {
+        const sp = hStationSpeedMap[st];
+        if (sp > 60) {
+          issues.push({ text: `Station ${st}: H speed ${sp.toFixed(1)} km/h (exceeds 60 km/h limit)`, type: "hviolation" });
+        }
+      });
+
+      // MPS violations
+      const mps = getMpsValue();
+      if (mps && rawData) {
+        const { distanceKm, speeds } = rawData;
+        const fromStn = document.getElementById("startStation").value;
+        const toStn = document.getElementById("endStation").value;
+        const section = getMainChartSection(rawData, fromStn, toStn);
+
+        let startIdx = 0, endIdx = speeds.length - 1;
+        if (section) { startIdx = section.startIdx; endIdx = section.endIdx; }
+
+        let totalViolSec = 0, totalViolKm = 0;
+        for (let i = startIdx + 1; i <= endIdx; i++) {
+          if (speeds[i] > mps) {
+            totalViolSec += 1;
+            const delta = distanceKm[i] - distanceKm[i - 1];
+            if (delta > 0) totalViolKm += delta;
+          }
+        }
+        if (totalViolSec > 0 && totalViolKm > 0) {
+          issues.push({ text: `MPS Violation: Speed exceeded MPS ${mps.toFixed(1)} km/h for ${totalViolSec} s over ${totalViolKm.toFixed(3)} km.`, type: "normal" });
+        }
+      }
+
+      return issues;
+    }
+
+    function printIrregularities() {
+      if (!rawData) { alert("Please load CSV and generate report first."); return; }
+      const heading = document.getElementById("mainHeading").textContent;
+      const nominatedCli = document.getElementById("nominatedCli").value || "-";
+      const analysedBy = document.getElementById("analysedBy").value || "-";
+      const analysedOn = document.getElementById("analysedOn").value || "";
+      const cliRemarkRaw = document.getElementById("cliRemarkRaw").value || "";
+
+      const issues = computeIrregularities();
+      let irHTML = "";
+      if (!issues.length) {
+        irHTML = "<div>None (all stations within limits).</div>";
+      } else {
+        irHTML = "<ul>";
+        issues.forEach(it => {
+          if (it.type === "hviolation") {
+            irHTML += `<li style="color:#b91c1c;font-weight:900">${escapeHtml(it.text)}</li>`;
+          } else {
+            irHTML += `<li style="font-weight:700">${escapeHtml(it.text)}</li>`;
+          }
+        });
+        irHTML += "</ul>";
+      }
+
+      const win = window.open("", "_blank", "width=900,height=700");
+      if (!win) { alert("Popup blocked — allow popups for this site to use separate irregularities print."); return; }
+
+      const html = `
+        <html><head><title>Irregularities - ${escapeHtml(heading)}</title>
+        <style>
+          body{font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin:20px; color:#111827}
+          h1{font-size:20px;margin-bottom:8px;font-weight:900}
+          .meta{font-size:14px;color:#374151;margin-bottom:12px;font-weight:700}
+          .ir{font-size:13px;margin-top:8px}
+          .cli{font-size:13px;color:#111827;margin-top:12px;white-space:pre-wrap;border:1px solid #e5e7eb;padding:10px;background:#fafafa;font-weight:700}
+          .footer{margin-top:30px;font-size:12px;color:#6b7280;font-weight:700}
+          @media print { .no-print{ display:none } }
+        </style>
+        </head><body>
+          <h1>Irregularities Report</h1>
+          <div class="meta"><strong>${escapeHtml(heading)}</strong><br/>Nominated CLI: ${escapeHtml(nominatedCli)} • Analyzed By: ${escapeHtml(analysedBy)} ${analysedOn ? " • Analyzed On: " + escapeHtml(analysedOn.split("-").reverse().join("-")) : ""}</div>
+          <div class="ir">${irHTML}</div>
+          <div style="margin-top:14px;"><strong>CLI Remark (raw):</strong></div>
+          <div class="cli">${cliRemarkRaw ? escapeHtml(cliRemarkRaw) : "<i>No CLI remark provided.</i>"}</div>
+          <div class="footer">Developed by RAJEESH RAJ CLI/KRCL</div>
+          <script>window.onload = function(){ window.print(); setTimeout(()=>window.close(),500); }<\/script>
+        </body></html>
+      `;
+      win.document.open(); win.document.write(html); win.document.close();
+
+      function escapeHtml(s) {
+        if (!s && s !== 0) return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+    }
+
+    /* parseHWorkbookArray: only accept H when next is A, prefer A-row speed, fallback to numeric on H-row */
+    function parseHWorkbookArray(sheetRows) {
+      if (!sheetRows || sheetRows.length < 1) return [];
+      const header = sheetRows[0].map(h => (h || "").toString().trim());
+      const rows = sheetRows.slice(1);
+
+      const eventCols = [];
+      header.forEach((h, idx) => {
+        if (!h) return;
+        const lo = h.toLowerCase();
+        if (lo === 'h' || lo === 'a' || lo === 'event_type_flag' || lo === 'event type flag' || lo === 'flag' || /event/i.test(h) || /flag/i.test(h)) {
+          eventCols.push(idx);
+        }
+      });
+
+      const speedCols = [];
+      header.forEach((h, idx) => {
+        if (!h) return;
+        const lo = h.toLowerCase();
+        if (/^a speed$/i.test(h) || /^a_speed$/i.test(h) || /a.*speed/i.test(h) || /^speed$/i.test(h) || /\bspeed\b/i.test(h)) {
+          speedCols.push(idx);
+        }
+      });
+
+      let timeCol = header.findIndex(h => /time/i.test(h));
+      let distCol = header.findIndex(h => /dist/i.test(h));
+
+      const parsed = [];
+
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
+        let isH = false;
+        if (eventCols.length) {
+          for (const ec of eventCols) {
+            const v = row[ec];
+            if (v !== undefined && v !== null && String(v).trim().toUpperCase() === 'H') { isH = true; break; }
+          }
+        } else {
+          for (let c = 0; c < row.length; c++) {
+            const v = row[c];
+            if (v !== undefined && v !== null && String(v).trim().toUpperCase() === 'H') { isH = true; break; }
+          }
+        }
+        if (!isH) continue;
+
+        const nextRow = rows[r + 1] || null;
+        if (!nextRow) continue;
+        let nextIsA = false;
+        if (eventCols.length) {
+          for (const ec of eventCols) {
+            const nv = nextRow[ec];
+            if (nv !== undefined && nv !== null && String(nv).trim().toUpperCase() === 'A') { nextIsA = true; break; }
+          }
+        } else {
+          for (let c = 0; c < nextRow.length; c++) {
+            const nv = nextRow[c];
+            if (nv !== undefined && nv !== null && String(nv).trim().toUpperCase() === 'A') { nextIsA = true; break; }
+          }
+        }
+        if (!nextIsA) continue;
+
+        let aSpeed = null;
+        if (speedCols.length) {
+          for (const sc of speedCols) {
+            const val = nextRow[sc];
+            if (val !== undefined && val !== null && val !== "") {
+              const n = parseFloat(val);
+              if (!isNaN(n)) { aSpeed = n; break; }
+            }
+          }
+        }
+
+        if (aSpeed === null) {
+          if (speedCols.length) {
+            for (const sc of speedCols) {
+              const val = row[sc];
+              if (val !== undefined && val !== null && val !== "") {
+                const n = parseFloat(val);
+                if (!isNaN(n)) { aSpeed = n; break; }
+              }
+            }
+          }
+          if (aSpeed === null) {
+            for (let c = 0; c < Math.min(row.length, 6); c++) {
+              const val = row[c];
+              if (val !== undefined && val !== null && val !== "") {
+                const n = parseFloat(val);
+                if (!isNaN(n) && n >= 0 && n < 300) { aSpeed = n; break; }
+              }
+            }
+          }
+        }
+
+        const eventTimeStr = (timeCol !== -1 && row[timeCol] !== undefined && row[timeCol] !== null) ? String(row[timeCol]).trim()
+                            : (timeCol !== -1 && nextRow && nextRow[timeCol] !== undefined && nextRow[timeCol] !== null) ? String(nextRow[timeCol]).trim()
+                            : null;
+        const distanceKm = (distCol !== -1 && row[distCol] !== undefined && row[distCol] !== null && row[distCol] !== "") ? parseFloat(row[distCol]) : null;
+
+        parsed.push({
+          rowIdx: r + 1,
+          eventTimeStr: eventTimeStr,
+          distanceKm: distanceKm,
+          aSpeed: (aSpeed !== null && !isNaN(aSpeed)) ? aSpeed : null
+        });
+      }
+
+      return parsed;
+    }
+
+    function handleHFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target.result;
+          let wb;
+          try { wb = XLSX.read(data, { type: 'binary' }); } catch (err) { wb = XLSX.read(data, { type: 'string' }); }
+          const firstSheetName = wb.SheetNames[0];
+          const ws = wb.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+          const parsed = parseHWorkbookArray(rows);
+          hEvents = parsed.map((p, i) => ({ ...p, index: i }));
+          mapHEventsToSPM();
+          alert(`Loaded H events: ${hEvents.length} entries found. Click "Plot & Generate Report" to show markers and merged Home speeds in Station-wise summary.`);
+        } catch (err) {
+          console.error(err);
+          alert("Error parsing H file: " + err.message);
+        }
+      };
+      reader.readAsBinaryString(file);
+    }
+
+    function getMainChartSection(data, fromStation, toStation) {
+      const { speeds, stationCodes } = data;
+      if (!fromStation || !toStation) return null;
+
+      let startIdx = null;
+      let endIdx = null;
+
+      for (let i = 1; i < speeds.length; i++) {
+        if (stationCodes[i] === fromStation && speeds[i] >= 1 && speeds[i - 1] === 0) {
+          startIdx = Math.max(0, i - 1);
+          break;
+        }
+      }
+
+      for (let i = 0; i < speeds.length; i++) {
+        if (stationCodes[i] === toStation && speeds[i] === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+
+      if (startIdx == null || endIdx == null || endIdx <= startIdx) return null;
+      return { startIdx, endIdx };
+    }
+
+    function plotAllGraphs() {
+      if (!rawData) {
+        alert("Please select and load an SPM CSV file first.");
+        return;
+      }
+      updateMainHeading();
+      mapHEventsToSPM();
+      plotDistanceFirst10Km(rawData);
+      plotStoppageSegmentCharts(rawData);
+      plotMainSpeedChart(rawData);
+      buildPerfSummary(rawData);
+      buildSummaryTable();
+      alert("Report generated. H events (if loaded) are marked on charts and Home speeds merged in Station-wise summary.");
+    }
+
+    function populateStationsFromCodes(stationCodes) {
+      const startSel = document.getElementById("startStation");
+      const endSel = document.getElementById("endStation");
+
+      startSel.length = 1;
+      endSel.length = 1;
+
+      const seen = new Set();
+      stationCodes.forEach(code => {
+        const stn = (code || "").trim();
+        if (!stn) return;
+        if (seen.has(stn)) return;
+        seen.add(stn);
+
+        const o1 = document.createElement("option");
+        o1.value = stn;
+        o1.textContent = stn;
+        startSel.appendChild(o1);
+
+        const o2 = document.createElement("option");
+        o2.value = stn;
+        o2.textContent = stn;
+        endSel.appendChild(o2);
+      });
+    }
+
+    function updateMainHeading() {
+      const lp   = document.getElementById("driverName").value || "LP NAME";
+      const trn  = document.getElementById("trainNo").value || "Train No";
+      const from = document.getElementById("startStation").value || "FROM";
+      const to   = document.getElementById("endStation").value || "TO";
+      const dateInput = document.getElementById("runDate").value;
+      const date = dateInput ? dateInput.split("-").reverse().join("-") : "Date";
+      document.getElementById("mainHeading").textContent =
+        `RTIS Analysis of ${lp} of ${trn} dated ${date} ${from} to ${to} station`;
+    }
+
+    function setupButtons() {
+      document.getElementById("plotBtn").addEventListener("click", plotAllGraphs);
+      document.getElementById("printBtn").addEventListener("click", () => window.print());
+      document.getElementById("printIrregBtn").addEventListener("click", printIrregularities);
+
+      document.getElementById("fileInput").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            rawData = parseCsv(e.target.result);
+            populateStationsFromCodes(rawData.stationCodes);
+            if (!document.getElementById("analysedOn").value) document.getElementById("analysedOn").value = todayISODate();
+            alert("CSV loaded successfully. Now select From/To station, set MPS if required, and click 'Plot & Generate Report'.");
+          } catch (err) {
+            console.error(err);
+            alert("Error parsing CSV: " + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      document.getElementById("hFileInput").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        handleHFile(file);
+      });
+
+      ["driverName","trainNo","runDate","startStation","endStation"].forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener("change", updateMainHeading);
+        if (el.tagName === "INPUT") el.addEventListener("input", updateMainHeading);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      updateMainHeading();
+      setupButtons();
+      HOME_SIGNAL_DATAURL = await loadHomeSignalDataUrl().catch(()=>null);
+    });
+  </script>
+</body>
+</html>
